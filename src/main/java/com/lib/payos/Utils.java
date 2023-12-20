@@ -36,8 +36,7 @@ public class Utils {
       else {
         valueAsString = value.toString();
       }
-      //      String valueAsString = value.isTextual() ? value.asText() : value.toString();
-      if (!stringBuilder.isEmpty()) {
+      if (!stringBuilder.toString().isEmpty()) {
         stringBuilder.append('&');
       }
       stringBuilder.append(key).append('=').append(valueAsString);
@@ -57,7 +56,7 @@ public class Utils {
     TreeMap<String, JsonNode> sortedMap = new TreeMap<>();
 
     while (fieldsIterator.hasNext()) {
-      Map.Entry<String, JsonNode> field = fieldsIterator.next();
+      Entry<String, JsonNode> field = fieldsIterator.next();
       sortedMap.put(field.getKey(), field.getValue());
     }
 
@@ -85,7 +84,6 @@ public class Utils {
       throws NoSuchAlgorithmException, InvalidKeyException {
     JsonNode sortedDataByKey = sortObjDataByKey(data);
     String dataQueryStr = convertObjToQueryStr(sortedDataByKey);
-    System.out.println(dataQueryStr);
     return generateHmacSHA256(dataQueryStr, key);
   }
 

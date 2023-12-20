@@ -2,6 +2,7 @@ package com.lib.payos;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lib.payos.type.PaymentData;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
@@ -32,10 +33,11 @@ public class PayOS {
     paymentData.setSignature(Utils.createSignatureOfPaymentRequest(paymentData, checksumKey));
     httpPost.setHeader("Accept", "application/json");
     httpPost.setHeader("Content-type", "application/json");
+    httpPost.setHeader("Charset", "UTF-8");
     httpPost.setHeader("x-client-id", clientId);
     httpPost.setHeader("x-api-key", apiKey);
     String paymentDataJson = objectMapper.writeValueAsString(paymentData);
-    httpPost.setEntity(new StringEntity(paymentDataJson));
+    httpPost.setEntity(new StringEntity(paymentDataJson, StandardCharsets.UTF_8));
     CloseableHttpResponse response = client.execute(httpPost);
     HttpEntity entity = response.getEntity();
     if (entity == null) {
@@ -63,6 +65,7 @@ public class PayOS {
     final HttpGet httpGet = new HttpGet(url);
     httpGet.setHeader("Accept", "application/json");
     httpGet.setHeader("Content-type", "application/json");
+    httpGet.setHeader("Charset", "UTF-8");
     httpGet.setHeader("x-client-id", clientId);
     httpGet.setHeader("x-api-key", apiKey);
     CloseableHttpResponse response = client.execute(httpGet);
@@ -96,9 +99,10 @@ public class PayOS {
     final HttpPost httpPost = new HttpPost(url);
     httpPost.setHeader("Accept", "application/json");
     httpPost.setHeader("Content-type", "application/json");
+    httpPost.setHeader("Charset", "UTF-8");
     httpPost.setHeader("x-client-id", clientId);
     httpPost.setHeader("x-api-key", apiKey);
-    httpPost.setEntity(new StringEntity("{\"webhookUrl\":\"" + webhookUrl + "\"}"));
+    httpPost.setEntity(new StringEntity("{\"webhookUrl\":\"" + webhookUrl + "\"}", StandardCharsets.UTF_8));
     CloseableHttpResponse response = client.execute(httpPost);
     int statusCode = response.getCode();
     response.close();
@@ -123,9 +127,10 @@ public class PayOS {
     final HttpPost httpPost = new HttpPost(url);
     httpPost.setHeader("Accept", "application/json");
     httpPost.setHeader("Content-type", "application/json");
+    httpPost.setHeader("Charset", "UTF-8");
     httpPost.setHeader("x-client-id", clientId);
     httpPost.setHeader("x-api-key", apiKey);
-    httpPost.setEntity(new StringEntity("{\"cancellationReason\":\"" + cancellationReason + "\"}"));
+    httpPost.setEntity(new StringEntity("{\"cancellationReason\":\"" + cancellationReason + "\"}", StandardCharsets.UTF_8));
     CloseableHttpResponse response = client.execute(httpPost);
     int statusCode = response.getCode();
     if (statusCode != 200){
