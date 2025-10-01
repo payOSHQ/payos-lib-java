@@ -1,299 +1,408 @@
-
 package vn.payos;
 
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+import lombok.NonNull;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import vn.payos.core.Client;
+import vn.payos.core.ClientOptions;
+import vn.payos.core.FileDownloadResponse;
+import vn.payos.core.FinalRequestOptions;
+import vn.payos.core.FinalRequestOptions.HTTPMethod;
+import vn.payos.core.RequestOptions;
+import vn.payos.exception.ConnectionException;
+import vn.payos.service.blocking.v1.payouts.PayoutsService;
+import vn.payos.service.blocking.v1.payouts.PayoutsServiceImpl;
+import vn.payos.service.blocking.v1.payoutsAccount.PayoutsAccountService;
+import vn.payos.service.blocking.v1.payoutsAccount.PayoutsAccountServiceImpl;
+import vn.payos.service.blocking.v2.paymentRequests.PaymentRequestsService;
+import vn.payos.service.blocking.v2.paymentRequests.PaymentRequestsServiceImpl;
+import vn.payos.service.blocking.webhooks.WebhooksService;
+import vn.payos.service.blocking.webhooks.WebhooksServiceImpl;
 
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.HttpEntity;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.io.entity.StringEntity;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import vn.payos.constant.PayOSConstant;
-import vn.payos.exception.PayOSException;
-import vn.payos.type.CheckoutResponseData;
-import vn.payos.type.PayOSResponse;
-import vn.payos.type.PaymentData;
-import vn.payos.type.PaymentLinkData;
-import vn.payos.type.Webhook;
-import vn.payos.type.WebhookData;
-import vn.payos.util.SignatureUtils;
-
-/**
- * The PayOS class provides methods to interact with the payment channel.
- * 
- * To use the PayOS class, you need to provide the client ID, API key, and
- * checksum key of the payment channel you create at
- * <a href="https://my.payos.vn">PayOS</a>. Optionally, you can also provide a
- * partner code.
- */
-public class PayOS {
+/** payOS client */
+public class PayOS extends Client {
   /**
-   * Client ID of the PayOS payment channel
+   * payOS client
+   *
+   * @param clientId client id
+   * @param apiKey api key
+   * @param checksumKey checksum key
    */
-  private final String clientId;
-
-  /**
-   * API Key of the PayOS payment channel
-   */
-  private final String apiKey;
-
-  /**
-   * Checksum Key of the PayOS payment channel
-   */
-  private final String checksumKey;
-
-  /**
-   * Your Partner Code
-   */
-  private final String partnerCode;
-
-  private static final String PAYOS_BASE_URL = PayOSConstant.PAYOS_BASE_URL;
-
-  /**
-   * Create a payOS object to use payment channel methods. Credentials are fields
-   * provided after creating a payOS payment channel at
-   * <a href="https://my.payos.vn">PayOS</a>
-   * 
-   * @param clientId    Client ID of the PayOS payment channel
-   * @param apiKey      API Key of the PayOS payment channel
-   * @param checksumKey Checksum Key of the PayOS payment channel
-   */
-  public PayOS(String clientId, String apiKey, String checksumKey) {
-    this.clientId = clientId;
-    this.apiKey = apiKey;
-    this.checksumKey = checksumKey;
-    this.partnerCode = null;
+  public PayOS(@NonNull String clientId, @NonNull String apiKey, @NonNull String checksumKey) {
+    super(clientId, apiKey, checksumKey);
   }
 
   /**
-   * Create a payOS object to use payment channel methods. Credentials are fields
-   * provided after creating a payOS payment channel at
-   * <a href="https://my.payos.vn">PayOS</a>
-   * 
-   * @param clientId    Client ID of the PayOS payment channel
-   * @param apiKey      API Key of the PayOS payment channel
-   * @param checksumKey Checksum Key of the PayOS payment channel
-   * @param partnerCode Your Partner Code
+   * payOS client
+   *
+   * @param clientId client id
+   * @param apiKey api key
+   * @param checksumKey checksum key
+   * @param partnerCode partner code
    */
-  public PayOS(String clientId, String apiKey, String checksumKey, String partnerCode) {
-    this.clientId = clientId;
-    this.apiKey = apiKey;
-    this.checksumKey = checksumKey;
-    this.partnerCode = partnerCode;
+  public PayOS(
+      @NonNull String clientId,
+      @NonNull String apiKey,
+      @NonNull String checksumKey,
+      String partnerCode) {
+    super(clientId, apiKey, checksumKey, partnerCode);
   }
 
   /**
-   * Create payment link for the order data passed in the parameter
-   * 
-   * @param paymentData Payment data
-   * @return Checkout order data
-   * @throws Exception Create payment link failed
+   * payOS client
+   *
+   * @param options options
    */
-  public CheckoutResponseData createPaymentLink(PaymentData paymentData)
-      throws Exception {
-    ObjectMapper objectMapper = new ObjectMapper();
-    String url = PAYOS_BASE_URL + "/v2/payment-requests";
-    CloseableHttpClient client = HttpClients.createDefault();
-    final HttpPost httpPost = new HttpPost(url);
-    paymentData.setSignature(SignatureUtils.createSignatureOfPaymentRequest(paymentData, checksumKey));
-    httpPost.setHeader("Accept", "application/json");
-    httpPost.setHeader("Content-type", "application/json");
-    httpPost.setHeader("Charset", "UTF-8");
-    httpPost.setHeader("x-client-id", clientId);
-    httpPost.setHeader("x-api-key", apiKey);
-    if (this.partnerCode != null) {
-      httpPost.setHeader("x-partner-code", this.partnerCode);
-    }
-    String paymentDataJson = objectMapper.writeValueAsString(paymentData);
-    httpPost.setEntity(new StringEntity(paymentDataJson, StandardCharsets.UTF_8));
-    CloseableHttpResponse response = client.execute(httpPost);
-    HttpEntity entity = response.getEntity();
-    if (entity == null) {
-      response.close();
-      client.close();
-      throw new Exception("Call api failed!");
-    }
-    String responseData = EntityUtils.toString(entity);
-    response.close();
-    client.close();
-    PayOSResponse<CheckoutResponseData> res = objectMapper.readValue(responseData,
-        new TypeReference<PayOSResponse<CheckoutResponseData>>() {
-        });
-
-    if (!res.getCode().equals("00")) {
-      throw new PayOSException(res.getCode(), res.getDesc());
-    }
-
-    String paymentLinkResSignature = SignatureUtils.createSignatureFromObj(res.getData(), checksumKey);
-    if (!paymentLinkResSignature.equals(res.getSignature())) {
-      throw new Exception(PayOSConstant.ERROR_MESSAGE.get("DATA_NOT_INTEGRITY"));
-    }
-
-    return res.getData();
+  public PayOS(@NonNull ClientOptions options) {
+    super(options);
   }
 
   /**
-   * Get payment information of an order that has created a payment link
-   * 
-   * @param orderId Order ID
-   * @return Payment link information
-   * @throws Exception Get payment link information failed
+   * payOS client
+   *
+   * @return payOS client
    */
-  public PaymentLinkData getPaymentLinkInformation(Long orderId) throws Exception {
-    ObjectMapper objectMapper = new ObjectMapper();
-    String url = PAYOS_BASE_URL + "/v2/payment-requests/" + orderId;
-    CloseableHttpClient client = HttpClients.createDefault();
-    final HttpGet httpGet = new HttpGet(url);
-    httpGet.setHeader("Accept", "application/json");
-    httpGet.setHeader("Content-type", "application/json");
-    httpGet.setHeader("Charset", "UTF-8");
-    httpGet.setHeader("x-client-id", clientId);
-    httpGet.setHeader("x-api-key", apiKey);
-    CloseableHttpResponse response = client.execute(httpGet);
-
-    HttpEntity entity = response.getEntity();
-    if (entity == null) {
-      response.close();
-      client.close();
-      throw new Exception("Call api failed!");
-    }
-    String responseData = EntityUtils.toString(entity);
-    response.close();
-    client.close();
-    PayOSResponse<PaymentLinkData> res = objectMapper.readValue(responseData,
-        new TypeReference<PayOSResponse<PaymentLinkData>>() {
-        });
-
-    if (!res.getCode().equals("00")) {
-      throw new PayOSException(res.getCode(), res.getDesc());
-    }
-
-    String paymentLinkResSignature = SignatureUtils.createSignatureFromObj(res.getData(), checksumKey);
-    if (!paymentLinkResSignature.equals(res.getSignature())) {
-      throw new Exception(PayOSConstant.ERROR_MESSAGE.get("DATA_NOT_INTEGRITY"));
-    }
-
-    return res.getData();
+  public static PayOS fromEnv() {
+    return new PayOS(ClientOptions.fromEnv());
   }
 
   /**
-   * Validate the Webhook URL of a payment channel and add or update Webhook URL
-   * for that payment channel if successful
-   * 
-   * @param webhookUrl Webhook URL
-   * @return Webhook URL
-   * @throws Exception Confirm webhook failed
+   * payOS async client
+   *
+   * @return payOS async client
    */
-  public String confirmWebhook(String webhookUrl) throws Exception {
-    if (webhookUrl == null || webhookUrl.isEmpty()) {
-      throw new Exception(PayOSConstant.ERROR_MESSAGE.get("INVALID_PARAMETER"));
-    }
-    String url = PAYOS_BASE_URL + "/confirm-webhook";
-    CloseableHttpClient client = HttpClients.createDefault();
-    final HttpPost httpPost = new HttpPost(url);
-    httpPost.setHeader("Accept", "application/json");
-    httpPost.setHeader("Content-type", "application/json");
-    httpPost.setHeader("Charset", "UTF-8");
-    httpPost.setHeader("x-client-id", clientId);
-    httpPost.setHeader("x-api-key", apiKey);
-    httpPost.setEntity(new StringEntity("{\"webhookUrl\":\"" + webhookUrl + "\"}", StandardCharsets.UTF_8));
-    CloseableHttpResponse response = client.execute(httpPost);
-    int statusCode = response.getCode();
-    response.close();
-    client.close();
-
-    if (statusCode == 200) {
-      return webhookUrl;
-    } else if (statusCode == 404) {
-      throw new PayOSException(PayOSConstant.ERROR_CODE.get("INTERNAL_SERVER_ERROR"),
-          PayOSConstant.ERROR_MESSAGE.get("INTERNAL_SERVER_ERROR"));
-    } else if (statusCode == 401) {
-      throw new PayOSException(PayOSConstant.ERROR_CODE.get("UNAUTHORIZED"),
-          PayOSConstant.ERROR_MESSAGE.get("UNAUTHORIZED"));
-    }
-    throw new PayOSException(PayOSConstant.ERROR_CODE.get("INTERNAL_SERVER_ERROR"),
-        PayOSConstant.ERROR_MESSAGE.get("INTERNAL_SERVER_ERROR"));
+  public PayOSAsync async() {
+    return new PayOSAsync(this.options);
   }
 
   /**
-   * Cancel payment link of an order
-   * 
-   * @param orderId            Order ID
-   * @param cancellationReason Reason for cancelling order (optional)
-   * @return Payment link information
-   * @throws Exception Cancel payment link failed
+   * Make request
+   *
+   * @param <TResp> response body type
+   * @param <TReq> request body type
+   * @param options options
+   * @param dataClass response data class
+   * @return response
    */
-  public PaymentLinkData cancelPaymentLink(long orderId, String cancellationReason)
-      throws Exception {
-    String url = PAYOS_BASE_URL + "/v2/payment-requests/" + orderId + "/cancel";
-    ObjectMapper objectMapper = new ObjectMapper();
-    CloseableHttpClient client = HttpClients.createDefault();
-    final HttpPost httpPost = new HttpPost(url);
-    httpPost.setHeader("Accept", "application/json");
-    httpPost.setHeader("Content-type", "application/json");
-    httpPost.setHeader("Charset", "UTF-8");
-    httpPost.setHeader("x-client-id", clientId);
-    httpPost.setHeader("x-api-key", apiKey);
-    if (cancellationReason != null)
-      httpPost
-          .setEntity(
-              new StringEntity("{\"cancellationReason\":\"" + cancellationReason + "\"}", StandardCharsets.UTF_8));
-    CloseableHttpResponse response = client.execute(httpPost);
-    int statusCode = response.getCode();
-    if (statusCode != 200) {
-      throw new PayOSException(PayOSConstant.ERROR_CODE.get("INTERNAL_SERVER_ERROR"),
-          PayOSConstant.ERROR_MESSAGE.get("INTERNAL_SERVER_ERROR"));
-    }
-    HttpEntity entity = response.getEntity();
-    if (entity == null) {
-      response.close();
-      client.close();
-      throw new Exception("Call api failed!");
-    }
-    String responseData = EntityUtils.toString(entity);
-    response.close();
-    client.close();
-    PayOSResponse<PaymentLinkData> res = objectMapper.readValue(responseData,
-        new TypeReference<PayOSResponse<PaymentLinkData>>() {
-        });
-
-    if (!res.getCode().equals("00")) {
-      throw new PayOSException(res.getCode(), res.getDesc());
-    }
-
-    String paymentLinkResSignature = SignatureUtils.createSignatureFromObj(res.getData(), checksumKey);
-    if (!paymentLinkResSignature.equals(res.getSignature())) {
-      throw new Exception(PayOSConstant.ERROR_MESSAGE.get("DATA_NOT_INTEGRITY"));
-    }
-
-    return res.getData();
-
+  public <TResp, TReq> TResp request(FinalRequestOptions<TReq> options, Class<TResp> dataClass) {
+    return execute(options, dataClass);
   }
 
   /**
-   * Verify data received via webhook after payment
-   * 
-   * @param webhookBody Request body received from webhook
-   * @return Webhook data
-   * @throws Exception Verify webhook data failed
+   * Make GET request
+   *
+   * @param <TResp> response body type
+   * @param path path
+   * @param dataClass response data class
+   * @param options options
+   * @return response
    */
-  public WebhookData verifyPaymentWebhookData(Webhook webhookBody) throws Exception {
-    WebhookData data = webhookBody.getData();
-    String signature = webhookBody.getSignature();
-    if (signature.isEmpty()) {
-      throw new Exception(PayOSConstant.ERROR_MESSAGE.get("NO_SIGNATURE"));
+  public <TResp> TResp get(String path, Class<TResp> dataClass, RequestOptions<Void> options) {
+    FinalRequestOptions<Void> finalOpts =
+        FinalRequestOptions.fromRequestOptions(HTTPMethod.GET, path, options);
+    return request(finalOpts, dataClass);
+  }
+
+  /**
+   * Make GET request
+   *
+   * @param <TResp> response body type
+   * @param path path
+   * @param dataClass response data class
+   * @return response
+   */
+  public <TResp> TResp get(String path, Class<TResp> dataClass) {
+    FinalRequestOptions<?> finalOpts =
+        FinalRequestOptions.builder().path(path).method(HTTPMethod.GET).build();
+    return request(finalOpts, dataClass);
+  }
+
+  /**
+   * Make POST request
+   *
+   * @param <TResp> response body type
+   * @param <TReq> request body type
+   * @param path path
+   * @param dataClass response data class
+   * @param options options
+   * @return response
+   */
+  public <TResp, TReq> TResp post(
+      String path, Class<TResp> dataClass, RequestOptions<TReq> options) {
+    FinalRequestOptions<TReq> finalOpts =
+        FinalRequestOptions.fromRequestOptions((HTTPMethod.POST), path, options);
+    return request(finalOpts, dataClass);
+  }
+
+  /**
+   * Make POST request
+   *
+   * @param <TResp> response body type
+   * @param <TReq> request body type
+   * @param path path
+   * @param dataClass response data class
+   * @return response
+   */
+  public <TResp, TReq> TResp post(String path, Class<TResp> dataClass) {
+    FinalRequestOptions<TReq> finalOpts =
+        FinalRequestOptions.<TReq>builder().path(path).method(HTTPMethod.POST).build();
+    return request(finalOpts, dataClass);
+  }
+
+  /**
+   * Make PUT request
+   *
+   * @param <TResp> response body type
+   * @param <TReq> request body type
+   * @param path path
+   * @param dataClass response data class
+   * @param options options
+   * @return response
+   */
+  public <TResp, TReq> TResp put(
+      String path, Class<TResp> dataClass, RequestOptions<TReq> options) {
+    FinalRequestOptions<TReq> finalOpts =
+        FinalRequestOptions.fromRequestOptions((HTTPMethod.PUT), path, options);
+    return request(finalOpts, dataClass);
+  }
+
+  /**
+   * Make PUT request
+   *
+   * @param <TResp> response body type
+   * @param <TReq> request body type
+   * @param path path
+   * @param dataClass response data class
+   * @return response
+   */
+  public <TResp, TReq> TResp put(String path, Class<TResp> dataClass) {
+    FinalRequestOptions<TReq> finalOpts =
+        FinalRequestOptions.<TReq>builder().path(path).method(HTTPMethod.PUT).build();
+    return request(finalOpts, dataClass);
+  }
+
+  /**
+   * Make PATCH request
+   *
+   * @param <TResp> response body type
+   * @param <TReq> request body type
+   * @param path path
+   * @param dataClass response data class
+   * @param options options
+   * @return response
+   */
+  public <TResp, TReq> TResp patch(
+      String path, Class<TResp> dataClass, RequestOptions<TReq> options) {
+    FinalRequestOptions<TReq> finalOpts =
+        FinalRequestOptions.fromRequestOptions((HTTPMethod.PATCH), path, options);
+    return request(finalOpts, dataClass);
+  }
+
+  /**
+   * Make PATCH request
+   *
+   * @param <TResp> response body type
+   * @param <TReq> request body type
+   * @param path path
+   * @param dataClass response data class
+   * @return response
+   */
+  public <TResp, TReq> TResp patch(String path, Class<TResp> dataClass) {
+    FinalRequestOptions<TReq> finalOpts =
+        FinalRequestOptions.<TReq>builder().path(path).method(HTTPMethod.PATCH).build();
+    return request(finalOpts, dataClass);
+  }
+
+  /**
+   * Make DELETE request
+   *
+   * @param <TResp> response body type
+   * @param <TReq> request body type
+   * @param path path
+   * @param dataClass response data class
+   * @param options options
+   * @return response
+   */
+  public <TResp, TReq> TResp delete(
+      String path, Class<TResp> dataClass, RequestOptions<TReq> options) {
+    FinalRequestOptions<TReq> finalOpts =
+        FinalRequestOptions.fromRequestOptions((HTTPMethod.DELETE), path, options);
+    return request(finalOpts, dataClass);
+  }
+
+  /**
+   * Make DELETE request
+   *
+   * @param <TResp> response body type
+   * @param <TReq> request body type
+   * @param path path
+   * @param dataClass response data class
+   * @return response
+   */
+  public <TResp, TReq> TResp delete(String path, Class<TResp> dataClass) {
+    FinalRequestOptions<TReq> finalOpts =
+        FinalRequestOptions.<TReq>builder().path(path).method(HTTPMethod.DELETE).build();
+    return request(finalOpts, dataClass);
+  }
+
+  private <TResp, TReq> TResp execute(FinalRequestOptions<TReq> reqOpts, Class<TResp> dataClass) {
+    int retriesRemaining =
+        reqOpts.getMaxRetries() != null ? reqOpts.getMaxRetries() : this.options.getMaxRetries();
+    int maxRetries =
+        reqOpts.getMaxRetries() != null ? reqOpts.getMaxRetries() : this.options.getMaxRetries();
+    FinalRequestOptions.HTTPMethod method =
+        reqOpts.getMethod() != null ? reqOpts.getMethod() : FinalRequestOptions.HTTPMethod.GET;
+    String url = buildUrl(reqOpts.getPath(), reqOpts.getQueries());
+    String body = processRequestBodyWithSignature(reqOpts);
+    java.util.Map<String, String> headers = buildHeaders(reqOpts.getHeaders());
+
+    // Use per-request timeout if specified, otherwise use default httpClient
+    OkHttpClient clientToUse = httpClient;
+    if (reqOpts.getTimeout() != null && reqOpts.getTimeout() != httpClient.connectTimeoutMillis()) {
+      clientToUse =
+          httpClient
+              .newBuilder()
+              .connectTimeout(reqOpts.getTimeout(), TimeUnit.MILLISECONDS)
+              .readTimeout(reqOpts.getTimeout(), TimeUnit.MILLISECONDS)
+              .writeTimeout(reqOpts.getTimeout(), TimeUnit.MILLISECONDS)
+              .build();
     }
-    String signData = SignatureUtils.createSignatureFromObj(data, checksumKey);
-    if (!signData.equals(signature)) {
-      throw new Exception(PayOSConstant.ERROR_MESSAGE.get("DATA_NOT_INTEGRITY"));
+
+    while (true) {
+      applySignatureHeaders(headers, reqOpts.getSignatureOpts(), reqOpts.getBody());
+      Request req = buildRequest(method, url, body, headers);
+      try (Response res = clientToUse.newCall(req).execute()) {
+        int status = res.code();
+        String text = "";
+        if (res.body() != null) {
+          text = res.body().string();
+        }
+
+        if (status < 200 || status >= 300) {
+          if (retriesRemaining > 0 && shouldRetry(status)) {
+            retriesRemaining -= 1;
+            sleep(
+                computeRetryDelayMs(
+                    res, maxRetries - retriesRemaining, maxRetries, retriesRemaining));
+            continue;
+          }
+          throw createAPIException(text, status);
+        }
+
+        return processResponse(text, status, res, reqOpts, dataClass);
+      } catch (IOException e) {
+        if (retriesRemaining > 0) {
+          retriesRemaining -= 1;
+          sleep(computeBackoffMs(maxRetries - retriesRemaining));
+          continue;
+        }
+        throw new ConnectionException(e.getMessage(), e);
+      }
     }
-    return data;
+  }
+
+  /**
+   * Download file
+   *
+   * @param <TReq> request body type
+   * @param reqOpts options
+   * @return File information
+   */
+  public <TReq> FileDownloadResponse downloadFile(FinalRequestOptions<TReq> reqOpts) {
+    int retriesRemaining =
+        reqOpts.getMaxRetries() != null ? reqOpts.getMaxRetries() : this.options.getMaxRetries();
+    int maxRetries =
+        reqOpts.getMaxRetries() != null ? reqOpts.getMaxRetries() : this.options.getMaxRetries();
+    FinalRequestOptions.HTTPMethod method =
+        reqOpts.getMethod() != null ? reqOpts.getMethod() : FinalRequestOptions.HTTPMethod.GET;
+    String url = buildUrl(reqOpts.getPath(), reqOpts.getQueries());
+    String body = buildBody(reqOpts.getBody());
+    java.util.Map<String, String> headers = buildHeaders(reqOpts.getHeaders());
+
+    // Use per-request timeout if specified, otherwise use default httpClient
+    OkHttpClient clientToUse = httpClient;
+    if (reqOpts.getTimeout() != null && reqOpts.getTimeout() != httpClient.connectTimeoutMillis()) {
+      clientToUse =
+          httpClient
+              .newBuilder()
+              .connectTimeout(reqOpts.getTimeout(), TimeUnit.MILLISECONDS)
+              .readTimeout(reqOpts.getTimeout(), TimeUnit.MILLISECONDS)
+              .writeTimeout(reqOpts.getTimeout(), TimeUnit.MILLISECONDS)
+              .build();
+    }
+
+    while (true) {
+      Request req = buildRequest(method, url, body, headers);
+      try (Response res = clientToUse.newCall(req).execute()) {
+        int status = res.code();
+        if (status < 200 || status >= 300) {
+          if (retriesRemaining > 0 && shouldRetry(status)) {
+            retriesRemaining -= 1;
+            sleep(
+                computeRetryDelayMs(
+                    res, maxRetries - retriesRemaining, maxRetries, retriesRemaining));
+            continue;
+          }
+          String text = "";
+          if (res.body() != null) {
+            text = res.body().string();
+          }
+          throw createAPIException(text, status);
+        }
+
+        return processFileDownloadResponse(res);
+      } catch (IOException e) {
+        if (retriesRemaining > 0) {
+          retriesRemaining -= 1;
+          sleep(computeBackoffMs(maxRetries - retriesRemaining));
+          continue;
+        }
+        throw new ConnectionException(e.getMessage(), e);
+      }
+    }
+  }
+
+  /** Close */
+  public void close() {
+    options.close();
+  }
+
+  /**
+   * PaymentRequestsService
+   *
+   * @return PaymentRequestsService
+   */
+  public PaymentRequestsService paymentRequests() {
+    return new PaymentRequestsServiceImpl(this);
+  }
+
+  /**
+   * WebhooksService
+   *
+   * @return WebhooksService
+   */
+  public WebhooksService webhooks() {
+    return new WebhooksServiceImpl(this);
+  }
+
+  /**
+   * PayoutsService
+   *
+   * @return PayoutsService
+   */
+  public PayoutsService payouts() {
+    return new PayoutsServiceImpl(this);
+  }
+
+  /**
+   * PayoutsAccountService
+   *
+   * @return PayoutsAccountService
+   */
+  public PayoutsAccountService payoutsAccount() {
+    return new PayoutsAccountServiceImpl(this);
   }
 }

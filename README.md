@@ -1,256 +1,288 @@
-The payOS library provides convenient access to the payOS API from applications written in server-side.
+# payOS Java Library
 
-## Documentation
+[![Maven Central](https://img.shields.io/maven-central/v/vn.payos/payos-java)](https://central.sonatype.com/artifact/vn.payos/payos-java)
+[![javadoc](https://javadoc.io/badge2/vn.payos/payos-java/javadoc.svg)](https://javadoc.io/doc/vn.payos/payos-java)
 
-See the [payOS API docs](https://payos.vn/docs/api/) for more information.
+The payOS Java library provides convenient access to the payOS Merchant API from applications written in Java.
+
+To learn how to use payOS Merchant API, checkout our [API Reference](https://payos.vn/docs/api) and [Documentation](https://payos.vn/docs). We also have some examples in [Examples](./src/main/java/vn/payos/examples/). Javadocs are available on [javadoc.io](https://javadoc.io/doc/vn.payos/payos-java).
+
+## Requirements
+
+Java 8 or later.
 
 ## Installation
 
-Import library on your application Maven.
+Gradle
 
-- Move file payos-java-1.0.0.jar to ${project.basedir}/libs/payos-java-1.0.0.jar
-- Add config in file pom.xml
-  ```
-  <dependency>
+```groovy
+implementation 'vn.payos:payos-java:2.0.0'
+```
+
+Maven
+
+```xml
+<dependency>
     <groupId>vn.payos</groupId>
     <artifactId>payos-java</artifactId>
-    <version>1.0.0</version>
-    <scope>system</scope>
-    <systemPath>${project.basedir}/libs/payos-java-1.0.0.jar</systemPath>
-  </dependency>
-  ```
-- Load library:
-  ```bash
-    mvn install
-  ```
+    <version>2.0.0</version>
+</dependency>
+```
 
 ## Usage
 
-### Initialize
+### Basic usage
 
-You need to initialize the PayOS object with the Client ID, Api Key and Checksum Key of the payment channel you created. Your Partner Code is optional.
+An example to create a payment link.
 
 ```java
+package vn.payos.examples;
+
 import vn.payos.PayOS;
+import vn.payos.exception.PayOSException;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 
-public void main(String[] args) {
-  String clientId = "your-client-id";
-  String apiKey = "your-api-key";
-  String checksumKey = "your-checksum-key";
-  String partnerCode = "your-partner-code";
+public class BasicUsageExample {
+  public static void main(String[] args) {
+    // Configures using the `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` environment
+    // variables
+    PayOS client = PayOS.fromEnv();
+    CreatePaymentLinkRequest paymentData =
+        CreatePaymentLinkRequest.builder()
+            .orderCode(System.currentTimeMillis() / 1000)
+            .amount(2000L)
+            .description("Thanh toan")
+            .returnUrl("https://your-url.com/success")
+            .cancelUrl("https://your-url.com/cancel")
+            .build();
 
-  PayOS payOS = new PayOS(clientId, apiKey, checksumKey);
+    try {
+      CreatePaymentLinkResponse response = client.paymentRequests().create(paymentData);
+      System.out.println(response);
+    } catch (PayOSException e) {
+      e.printStackTrace();
+    }
+  }
+}
+```
 
-  // or with partnerCode
+### Webhook verification
 
-  PayOS payOS = new PayOS(clientId, apiKey, checksumKey, partnerCode);
+You can register an endpoint to receive the payment webhook.
 
+```java
+ConfirmWebhookResponse result = client.webhooks().confirm("https://your-url.com/payos-webhook");
+```
+
+Then using `.webhooks().verify()` to verify an receive webhook data.
+
+```java
+WebhookData data = client.webhooks().verify(body);
+```
+
+For more information about webhooks, see [the API doc](https://payos.vn/docs/api/#tag/payment-webhook/operation/payment-webhook).
+
+### Handling errors
+
+When the API return a non-success status code (i.e, 4xx or 5xx response) or non-success code data (any code except '00'), an exception `APIException` or its subclass will be thrown:
+
+```java
+try {
+  client.get("/not-found", Object.class);
+} catch (APIException e) {
+  e.printStackTrace();
+}
+```
+
+### Asynchronous usage
+
+The default client is synchronous. To switch to asynchronous, call the `async()` method or create an asynchronous client from the beginning.
+
+```java
+import java.util.concurrent.CompletableFuture;
+import vn.payos.PayOS;
+import vn.payos.PayOSAsync;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
+
+public class BasicUsageExample {
+  public static void main(String[] args) {
+    CreatePaymentLinkRequest paymentData =
+        CreatePaymentLinkRequest.builder()
+            .orderCode(System.currentTimeMillis() / 1000)
+            .amount(2000L)
+            .description("Thanh toan")
+            .returnUrl("https://your-url.com/success")
+            .cancelUrl("https://your-url.com/cancel")
+            .build();
+    // Configures using the `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` environment
+    // variables
+    PayOS client = PayOS.fromEnv();
+    PayOSAsync asyncClient = PayOSAsync.fromEnv();
+
+    CompletableFuture<CreatePaymentLinkResponse> future =
+        client.async().paymentRequests().create(paymentData);
+
+    CompletableFuture<CreatePaymentLinkResponse> anotherFuture =
+        asyncClient.paymentRequests().create(paymentData);
+  }
 }
 
 ```
 
-### Methods included in the PayOS object
+### Auto pagination
 
-- **createPaymentLink**
-
-Create a payment link for the order data
-
-Syntax:
+List method in the payOS Merchant API are paginated, the library provides auto-paginating.
 
 ```java
-CheckoutResponseData data = payOS.createPaymentLink(paymentData);
-```
-
-Parameter data type: PaymentData
-
-```java
-ItemData itemData = ItemData.builder().name("Mỳ tôm Hảo Hảo ly").quantity(1).price(2000).build();
-
-PaymentData paymentData = PaymentData.builder()
-    .orderCode(orderCode).amount(2000)
-    .description("Thanh toán đơn hàng")
-    .returnUrl(webhookUrl + "/success")
-    .cancelUrl(webhookUrl + "/cancel")
-    .item(itemData).build();
+Page<Payout> page = client.payouts().list(GetPayoutListParams.builder().limit(50).build());
+for (Payout payout : page.autoPager()) {
+  System.out.println(payout.getReferenceId());
+}
+page.autoPager().stream()
+    .limit(10)
+    .forEach(payout -> System.out.println(payout.getReferenceId()));
+;
 
 ```
 
-Note that:
-
-- If you want to assign field, you can do this by set method. Example:
+With asynchronous:
 
 ```java
-paymentData.setExpiredAt(1);
+CompletableFuture<PageAsync<Payout>> pageFuture =
+    client.async().payouts().list(GetPayoutListParams.builder().limit(50).build());
+AsyncStreamResponse.Handler<Payout> handler =
+    new AsyncStreamResponse.Handler<Payout>() {
+
+      @Override
+      public void onNext(Payout item) {
+        System.out.println(item.getReferenceId());
+      }
+
+      @Override
+      public void onComplete(Optional<Throwable> error) {
+        if (error.isPresent()) {
+          System.out.println("Error occur");
+          throw new RuntimeException(error.get());
+        }
+        System.out.println("Complete");
+      }
+    };
+pageFuture.thenAccept(page -> page.autoPager().subscribe(handler));
+
+pageFuture.thenAccept(
+    page ->
+        page.autoPager()
+            .subscribe(
+                payout -> {
+                  System.out.println(payout.getReferenceId());
+                })
+            .onCompleteFuture()
+            .whenComplete(
+                (unused, error) -> {
+                  if (error != null) {
+                    System.out.println("Error occur");
+                    throw new RuntimeException(error);
+                  }
+                  System.out.println("Complete");
+                }));
 ```
 
-- If you want to add more item to the list, you can do this by add method. Example:
+Alternative, you can use `getItems()`, `hasNextPage()`, `nextPage()` to manually request next page:
 
 ```java
-paymentData.addItem(itemData);
-```
-
-Return data type: CheckoutResponseData
-
-```java
-public class CheckoutResponseData {
-  private String bin;
-  private String accountNumber;
-  private String accountName;
-  private Integer amount;
-  private String description;
-  private Long orderCode;
-  private String currency;
-  private String paymentLinkId;
-  private String status;
-  private String checkoutUrl;
-  private String qrCode;
+Page<Payout> page = client.payouts().list(GetPayoutListParams.builder().limit(50).build());
+while (true) {
+  for (Payout payout : page.getItems()) {
+    System.out.println(payout.getReferenceId());
+  }
+  if (!page.hasNextPage()) {
+    break;
+  }
+  page = page.nextPage();
 }
 ```
 
-- **getPaymentLinkInformation**
+### Advanced usage
 
-Get payment information of an order that has created a payment link.
+#### Custom configuration
 
-Syntax:
-
-```java
-PaymentLinkData paymentData = payOS.getPaymentLinkInformation(orderCode);
-```
-
-Parameters:
-
-- `id`: Store order code (`orderCode`) or payOS payment link id (`paymentLinkId`). Type of `id` is long.
-
-Return data type: PaymentLinkData
+You can customize the PayOS client with a various options:
 
 ```java
-public class PaymentLinkData {
-  private String id;
-  private Long orderCode;
-  private Integer amount;
-  private Integer amountPaid;
-  private Integer amountRemaining;
-  private String status;
-  private String createdAt;
-  private List<Transaction> transactions;
-  private String cancellationReason;
-  private String canceledAt;
-}
+PayOS client =
+    new PayOS(
+        ClientOptions.builder()
+            .clientId("YOUR_CLIENT_ID")
+            .apiKey("YOUR_API_KEY")
+            .checksumKey("YOUR_CHECKSUM_KEY")
+            .baseURL("https://api-merchant.payos.vn")
+            .logLevel(LogLevel.DEBUG) // only work for default httpClient
+            .maxRetries(1)
+            .timeoutMs(50)
+            .httpClient(yourHttpClient)
+            .build());
 ```
 
-Transaction type: Transaction
+See this table for the available options with system properties and environment variables:
+
+| Setter        | System property      | Environment variable | Required | Default value                   |
+| ------------- | -------------------- | -------------------- | -------- | ------------------------------- |
+| `clientId`    | `payos.client-id`    | `PAYOS_CLIENT_ID`    | true     | -                               |
+| `apiKey`      | `payos.api-key`      | `PAYOS_API_KEY`      | true     | -                               |
+| `checksumKey` | `payos.checksum-key` | `PAYOS_CHECKSUM_KEY` | true     | -                               |
+| `partnerCode` | `payos.partner-code` | `PAYOS_PARTNER_CODE` | false    | -                               |
+| `baseURL`     | `payos.base-url`     | `PAYOS_BASE_URL`     | false    | `https://api-merchant.payos.vn` |
+| `timeoutMs`   | `payos.timeout-ms`   | `PAYOS_TIMEOUT_MS`   | false    | 60000                           |
+| `maxRetries`  | `payos.max-retries`  | `PAYOS_MAX_RETRIES`  | false    | 2                               |
+| `logLevel`    | `payos.log-level`    | `PAYOS_LOG_LEVEL`    | false    | NONE                            |
+
+#### Request-level options
+
+You can override client-level options for individual request:
 
 ```java
-public class Transaction {
-  private String reference;
-  private Integer amount;
-  private String accountNumber;
-  private String description;
-  private String transactionDateTime;
-  private String virtualAccountName;
-  private String virtualAccountNumber;
-  private String counterAccountBankId;
-  private String counterAccountBankName;
-  private String counterAccountName;
-  private String counterAccountNumber;
-}
+PayOS client =
+    new PayOS(
+        ClientOptions.builder()
+            .clientId("YOUR_CLIENT_ID")
+            .apiKey("YOUR_API_KEY")
+            .checksumKey("YOUR_CHECKSUM_KEY")
+            .baseURL("https://api-merchant.payos.vn")
+            .logLevel(LogLevel.DEBUG) // only work for default httpClient
+            .maxRetries(1)
+            .timeoutMs(50)
+            .httpClient(yourHttpClient)
+            .build());
+CompletableFuture<PageAsync<Payout>> response =
+    client
+        .async()
+        .payouts()
+        .list(
+            GetPayoutListParams.builder().limit(5).build(),
+            RequestOptions.builder()
+                .maxRetries(0) // `0` mean no retry request
+                .timeout(5000)
+                .build());
 ```
 
-- **cancelPaymentLink**
+#### Signature
 
-Cancel the payment link of the order.
-
-Syntax:
+The signature can be manually create by `.getCrypto()` method:
 
 ```java
-PaymentLinkData paymentData = payOS.cancelPaymentLink(orderCode, cancellationReason);
+// for create payment link signature
+String createPaymentLinkSignature =
+    client.getCrypto().createSignatureOfPaymentRequest(data, checksumKey);
+
+// for payment-requests and webhook signature
+String paymentRequestSignature = client.getCrypto().createSignatureFromObj(data, checksumKey);
+
+// for payouts signature
+String payoutsSignature = client.getCrypto().createSignature(checksumKey, data);
 ```
 
-Parameters:
+## Contributing
 
-- `id`: Store order code (`orderCode`) or payOS payment link id (`paymentLinkId`). Type of `id` is long.
-
-- `cancellationReason`: Reason for canceling payment link (optional).
-
-Return data type: PaymentLinkData
-
-```java
-public class PaymentLinkData {
-  private String id;
-  private Long orderCode;
-  private Integer amount;
-  private Integer amountPaid;
-  private Integer amountRemaining;
-  private String status;
-  private String createdAt;
-  private List<Transaction> transactions;
-  private String cancellationReason;
-  private String canceledAt;
-}
-```
-
-- **confirmWebhook**
-
-Validate the Webhook URL of a payment channel and add or update the Webhook URL for that Payment Channel if successful.
-
-Syntax:
-
-```java
-String result = payOS.confirmWebhook(webhookUrl);
-```
-
-- **verifyPaymentWebhookData**
-
-Verify data received via webhook after payment.
-
-Syntax:
-
-```java
-WebhookData result = payOS.verifyPaymentWebhookData(webhookBody);
-```
-
-Return data type: WebhookData
-
-```java
-public class WebhookData {
-  private Long orderCode;
-  private Integer amount;
-  private String description;
-  private String accountNumber;
-  private String reference;
-  private String transactionDateTime;
-  private String currency;
-  private String paymentLinkId;
-  private String code;
-  private String desc;
-  private String counterAccountBankId;
-  private String counterAccountBankName;
-  private String counterAccountName;
-  private String counterAccountNumber;
-  private String virtualAccountName;
-  private String virtualAccountNumber;
-}
-```
-
-## Development
-
-Java 8 or later is required to build the PayOS Java library. The library uses the latest stable version of the PayOS API. Tests use the same Java runtime as the build.
-
-To run all tests:
-
-```bash
-mvn test
-```
-
-You can run particular tests by specifying the test class name. For example:
-
-```bash
-mvn test -Dtest=vn.payos.PayOSTest
-mvn test -Dtest=vn.payos.SignatureTest
-```
-
-Build from source:
-
-```bash
-mvn install
-```
+See [the contributing documentation](./CONTRIBUTING.md).
