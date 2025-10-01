@@ -57,6 +57,17 @@ jobs:
         run: |
           gpg --list-secret-keys --keyid-format LONG
 
+      - name: Debug settings.xml content
+        run: |
+          echo "=== Maven settings.xml content ==="
+          if [ -f ~/.m2/settings.xml ]; then
+            cat ~/.m2/settings.xml
+          else
+            echo "settings.xml not found at ~/.m2/settings.xml"
+            find ~/.m2 -name "settings.xml" -exec cat {} \; 2>/dev/null || echo "No settings.xml found in ~/.m2"
+          fi
+          echo "=== End of settings.xml content ==="
+
       - name: Build & publish via central publishing plugin
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
