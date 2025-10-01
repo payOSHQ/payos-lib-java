@@ -58,10 +58,10 @@ jobs:
           gpg --list-secret-keys --keyid-format LONG
 
       - name: Effective settings
-        run: mvn help:effective-settings
+        run: mvn help:effective-settings --no-transfer-progress
 
       - name: Effective POM
-        run: mvn help:effective-pom
+        run: mvn help:effective-pom --no-transfer-progress
 
       - name: Build & publish via central publishing plugin
         env:
