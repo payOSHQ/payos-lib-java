@@ -1,0 +1,61 @@
+package vn.payos.model.v1.payouts;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.OffsetDateTime;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.NonNull;
+
+/** PayoutTransaction */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PayoutTransaction {
+  @NonNull
+  @JsonProperty("id")
+  private String id;
+
+  @NonNull
+  @JsonProperty("referenceId")
+  private String referenceId;
+
+  @NonNull
+  @JsonProperty("amount")
+  private Long amount;
+
+  @NonNull
+  @JsonProperty("description")
+  private String description;
+
+  @NonNull
+  @JsonProperty("toBin")
+  private String toBin;
+
+  @NonNull
+  @JsonProperty("toAccountNumber")
+  private String toAccountNumber;
+
+  @JsonProperty("toAccountName")
+  private String toAccountName;
+
+  @JsonProperty("reference")
+  private String reference;
+
+  @JsonProperty("transactionDatetime")
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
+  private OffsetDateTime transactionDatetime;
+
+  @JsonProperty("errorMessage")
+  private String errorMessage;
+
+  @JsonProperty("errorCode")
+  private String errorCode;
+
+  @NonNull
+  @JsonProperty("state")
+  private PayoutTransactionState state;
+}

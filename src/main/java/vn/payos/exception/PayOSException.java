@@ -1,23 +1,32 @@
 package vn.payos.exception;
 
-import lombok.Getter;
-
-/** PayOS Exception */
-public class PayOSException extends Exception {
+/** PayOSException */
+public class PayOSException extends RuntimeException {
   /**
-   * Error code
+   * PayOSException
+   *
+   * @param message message
    */
-  @Getter
-  private String code;
-
-  /**
-   * Create PayOS exception with code and message
-   * 
-   * @param code    Error code
-   * @param message Error message
-   */
-  public PayOSException(String code, String message) {
+  public PayOSException(String message) {
     super(message);
-    this.code = code;
+  }
+
+  /**
+   * PayOSException
+   *
+   * @param message message
+   * @param cause cause
+   */
+  public PayOSException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  /**
+   * PayOSException
+   *
+   * @param cause cause
+   */
+  public PayOSException(Throwable cause) {
+    super(cause);
   }
 }
