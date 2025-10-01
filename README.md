@@ -16,7 +16,7 @@ Java 8 or later.
 Gradle
 
 ```groovy
-implementation 'vn.payos:payos-java:2.0.0-SNAPSHOT'
+implementation 'vn.payos:payos-java:2.0.0'
 ```
 
 Maven
@@ -25,7 +25,7 @@ Maven
 <dependency>
     <groupId>vn.payos</groupId>
     <artifactId>payos-java</artifactId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>2.0.0</version>
 </dependency>
 ```
 
