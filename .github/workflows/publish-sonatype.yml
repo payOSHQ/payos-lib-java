@@ -3,8 +3,15 @@ name: Publish to Sonatype Central (Central Publisher)
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
-      - "v[0-9]+.[0-9]+.[0-9]+-*"
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+"
+      - "v[0-9]+\\.[0-9]+\\.[0-9]+-.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to checkout and publish (e.g., v2.0.0)"
+        required: true
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -12,10 +19,27 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.ref_name, 'SNAPSHOT') }}
+    if: |
+      !(contains(github.ref_name, 'SNAPSHOT')) && (github.event_name != 'workflow_dispatch' || !contains(github.event.inputs.tag, 'SNAPSHOT'))
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '' && github.event.inputs.tag) || github.ref }}
+
+      - name: Verify tag exists (only for dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch --tags
+          if ! git rev-parse --verify "refs/tags/${{ github.event.inputs.tag }}" > /dev/null; then
+            echo "ERROR: Tag '${{ github.event.inputs.tag }}' does not exist"
+            echo "Available tags:"
+            git tag --sort=-version:refname | head -10
+            exit 1
+          fi
+          echo "Tag '${{ github.event.inputs.tag }}' verified successfully"
 
       - name: Set up Java + Sonatype central settings + GPG
         uses: actions/setup-java@v4
@@ -25,7 +49,7 @@ jobs:
           cache: maven
           server-id: central
           server-username: ${{ secrets.MAVEN_USERNAME }}
-          server-password: ${{ secrets.MAVEN_PASSWORD }}
+          server-password: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
@@ -36,7 +60,7 @@ jobs:
       - name: Build & publish via central publishing plugin
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+          MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           mvn clean deploy --batch-mode --no-transfer-progress
