@@ -12,6 +12,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref_name, 'SNAPSHOT') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
