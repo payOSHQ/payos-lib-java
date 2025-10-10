@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.1 (2025-10-10)
+
+### Refactor
+
+- **client:** update `OffsetDatetime` to `String` in models
+
 ## 2.0.0 (2025-10-01)
 
 For full migrate guild see [MIGRATION.md](./MIGRATION.md).
