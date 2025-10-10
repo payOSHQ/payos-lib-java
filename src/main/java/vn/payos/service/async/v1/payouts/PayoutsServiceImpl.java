@@ -1,6 +1,5 @@
 package vn.payos.service.async.v1.payouts;
 
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -173,12 +172,10 @@ public class PayoutsServiceImpl extends APIService<PayOSAsync> implements Payout
         queryParams.put("category", String.join(",", params.getCategory()));
       }
       if (params.getFromDate() != null) {
-        queryParams.put(
-            "fromDate", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(params.getFromDate()));
+        queryParams.put("fromDate", params.getFromDate());
       }
       if (params.getToDate() != null) {
-        queryParams.put(
-            "toDate", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(params.getToDate()));
+        queryParams.put("toDate", params.getToDate());
       }
       if (params.getLimit() != null) {
         queryParams.put("limit", params.getLimit());

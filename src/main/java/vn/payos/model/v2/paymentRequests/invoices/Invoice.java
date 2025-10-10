@@ -1,8 +1,6 @@
 package vn.payos.model.v2.paymentRequests.invoices;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.time.OffsetDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,8 +24,7 @@ public class Invoice {
   private Long issuedTimestamp;
 
   @JsonProperty("issuedDatetime")
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
-  private OffsetDateTime issuedDatetime;
+  private String issuedDatetime;
 
   @JsonProperty("transactionId")
   private String transactionId;

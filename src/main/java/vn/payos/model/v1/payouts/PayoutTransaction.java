@@ -1,8 +1,6 @@
 package vn.payos.model.v1.payouts;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.time.OffsetDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -46,8 +44,7 @@ public class PayoutTransaction {
   private String reference;
 
   @JsonProperty("transactionDatetime")
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
-  private OffsetDateTime transactionDatetime;
+  private String transactionDatetime;
 
   @JsonProperty("errorMessage")
   private String errorMessage;
