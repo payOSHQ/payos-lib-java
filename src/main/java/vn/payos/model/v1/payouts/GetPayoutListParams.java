@@ -1,8 +1,6 @@
 package vn.payos.model.v1.payouts;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,12 +23,10 @@ public class GetPayoutListParams {
   private List<String> category;
 
   @JsonProperty("fromDate")
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
-  private OffsetDateTime fromDate;
+  private String fromDate;
 
   @JsonProperty("toDate")
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
-  private OffsetDateTime toDate;
+  private String toDate;
 
   @JsonProperty("limit")
   private Integer limit;

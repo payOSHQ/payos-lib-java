@@ -1,6 +1,5 @@
 package vn.payos.service.blocking.v1.payouts;
 
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import vn.payos.PayOS;
@@ -168,12 +167,10 @@ public class PayoutsServiceImpl extends APIService<PayOS> implements PayoutsServ
         queryParams.put("category", String.join(",", params.getCategory()));
       }
       if (params.getFromDate() != null) {
-        queryParams.put(
-            "fromDate", params.getFromDate().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        queryParams.put("fromDate", params.getFromDate());
       }
       if (params.getToDate() != null) {
-        queryParams.put(
-            "toDate", params.getToDate().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+        queryParams.put("toDate", params.getToDate());
       }
       if (params.getLimit() != null) {
         queryParams.put("limit", params.getLimit());

@@ -2,7 +2,6 @@ package vn.payos.core;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
 import java.util.*;
 import lombok.Getter;
@@ -35,7 +34,7 @@ public abstract class Client {
   protected final OkHttpClient httpClient;
 
   /** mapper */
-  protected final ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
+  protected final ObjectMapper mapper = new ObjectMapper();
 
   /** crypto */
   protected final CryptoProvider crypto;

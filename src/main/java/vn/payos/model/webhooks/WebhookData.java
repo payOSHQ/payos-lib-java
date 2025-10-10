@@ -1,8 +1,6 @@
 package vn.payos.model.webhooks;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.time.OffsetDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -37,8 +35,7 @@ public class WebhookData {
 
   @NonNull
   @JsonProperty("transactionDateTime")
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ssXXX")
-  private OffsetDateTime transactionDateTime;
+  private String transactionDateTime;
 
   @NonNull
   @JsonProperty("currency")
