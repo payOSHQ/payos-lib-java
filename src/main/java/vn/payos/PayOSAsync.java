@@ -22,8 +22,8 @@ import vn.payos.service.async.v1.payoutsAccount.PayoutsAccountService;
 import vn.payos.service.async.v1.payoutsAccount.PayoutsAccountServiceImpl;
 import vn.payos.service.async.v2.paymentRequests.PaymentRequestsService;
 import vn.payos.service.async.v2.paymentRequests.PaymentRequestsServiceImpl;
-import vn.payos.service.async.webhook.WebhooksService;
-import vn.payos.service.async.webhook.WebhooksServiceImpl;
+import vn.payos.service.async.webhooks.WebhooksService;
+import vn.payos.service.async.webhooks.WebhooksServiceImpl;
 
 /** payOS async client */
 public class PayOSAsync extends Client {

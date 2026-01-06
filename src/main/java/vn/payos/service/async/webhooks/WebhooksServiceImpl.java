@@ -1,4 +1,4 @@
-package vn.payos.service.async.webhook;
+package vn.payos.service.async.webhooks;
 
 import java.util.concurrent.CompletableFuture;
 import vn.payos.PayOSAsync;
