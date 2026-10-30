@@ -18,6 +18,7 @@ import vn.payos.exception.APIException;
 import vn.payos.exception.InvalidSignatureException;
 import vn.payos.exception.PayOSException;
 import vn.payos.util.PropertiesUtils;
+import vn.payos.util.WebhookVerification;
 
 /**
  * Base client class that provides common functionality for both synchronous and asynchronous payOS
@@ -248,7 +249,7 @@ public abstract class Client {
         (sig.getResponse() == FinalRequestOptions.ResponseSigning.BODY)
             ? crypto.createSignatureFromObj(data, options.getChecksumKey())
             : crypto.createSignature(options.getChecksumKey(), data);
-    if (!resSignature.equals(signed)) {
+    if (!WebhookVerification.constantTimeEquals(resSignature, signed)) {
       throw new InvalidSignatureException("Data integrity check failed");
     }
   }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.2 (2026-10-30)
+
+### Bug Fixes
+
+- **webhooks:** stricter validation of raw webhook data before signature verification; constant-time comparison
+
 ## 2.0.1 (2025-10-10)
 
 ### Refactor
