@@ -1,5 +1,7 @@
 package vn.payos.service.blocking.v1.payouts;
 
+import static vn.payos.core.PathSegments.segment;
+
 import java.util.HashMap;
 import java.util.Map;
 import vn.payos.PayOS;
@@ -82,7 +84,8 @@ public class PayoutsServiceImpl extends APIService<PayOS> implements PayoutsServ
       requestOptions.setMaxRetries(options.getMaxRetries());
       requestOptions.setTimeout(options.getTimeout());
     }
-    return this.client.get("/v1/payouts/" + payoutId, Payout.class, requestOptions);
+    return this.client.get(
+        "/v1/payouts/" + segment("payoutId", payoutId), Payout.class, requestOptions);
   }
 
   @Override

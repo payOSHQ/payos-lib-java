@@ -1,5 +1,7 @@
 package vn.payos.service.blocking.v2.paymentRequests.invoices;
 
+import static vn.payos.core.PathSegments.segment;
+
 import vn.payos.PayOS;
 import vn.payos.core.APIService;
 import vn.payos.core.FileDownloadResponse;
@@ -37,7 +39,9 @@ public class InvoicesServiceImpl extends APIService<PayOS> implements InvoicesSe
     }
 
     return client.get(
-        "/v2/payment-requests/" + paymentLinkId + "/invoices", InvoicesInfo.class, requestOptions);
+        "/v2/payment-requests/" + segment("paymentLinkId", paymentLinkId) + "/invoices",
+        InvoicesInfo.class,
+        requestOptions);
   }
 
   @Override
@@ -58,7 +62,9 @@ public class InvoicesServiceImpl extends APIService<PayOS> implements InvoicesSe
     }
 
     return client.get(
-        "/v2/payment-requests/" + orderCode + "/invoices", InvoicesInfo.class, requestOptions);
+        "/v2/payment-requests/" + segment("orderCode", orderCode) + "/invoices",
+        InvoicesInfo.class,
+        requestOptions);
   }
 
   @Override
@@ -91,7 +97,11 @@ public class InvoicesServiceImpl extends APIService<PayOS> implements InvoicesSe
     return this.client.downloadFile(
         FinalRequestOptions.fromRequestOptions(
             HTTPMethod.GET,
-            "/v2/payment-requests/" + paymentLinkId + "/invoices/" + invoiceId + "/download",
+            "/v2/payment-requests/"
+                + segment("paymentLinkId", paymentLinkId)
+                + "/invoices/"
+                + segment("invoiceId", invoiceId)
+                + "/download",
             requestOptions));
   }
 
@@ -116,7 +126,11 @@ public class InvoicesServiceImpl extends APIService<PayOS> implements InvoicesSe
     return this.client.downloadFile(
         FinalRequestOptions.fromRequestOptions(
             HTTPMethod.GET,
-            "/v2/payment-requests/" + orderCode + "/invoices/" + invoiceId + "/download",
+            "/v2/payment-requests/"
+                + segment("orderCode", orderCode)
+                + "/invoices/"
+                + segment("invoiceId", invoiceId)
+                + "/download",
             requestOptions));
   }
 

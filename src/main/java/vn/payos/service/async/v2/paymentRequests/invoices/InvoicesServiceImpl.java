@@ -1,5 +1,7 @@
 package vn.payos.service.async.v2.paymentRequests.invoices;
 
+import static vn.payos.core.PathSegments.segment;
+
 import java.util.concurrent.CompletableFuture;
 import vn.payos.PayOSAsync;
 import vn.payos.core.APIService;
@@ -38,7 +40,9 @@ public class InvoicesServiceImpl extends APIService<PayOSAsync> implements Invoi
     }
 
     return client.getAsync(
-        "/v2/payment-requests/" + paymentLinkId, InvoicesInfo.class, requestOptions);
+        "/v2/payment-requests/" + segment("paymentLinkId", paymentLinkId),
+        InvoicesInfo.class,
+        requestOptions);
   }
 
   @Override
@@ -58,7 +62,10 @@ public class InvoicesServiceImpl extends APIService<PayOSAsync> implements Invoi
       requestOptions.setTimeout(options.getTimeout());
     }
 
-    return client.getAsync("/v2/payment-requests/" + orderCode, InvoicesInfo.class, requestOptions);
+    return client.getAsync(
+        "/v2/payment-requests/" + segment("orderCode", orderCode),
+        InvoicesInfo.class,
+        requestOptions);
   }
 
   @Override
@@ -91,7 +98,11 @@ public class InvoicesServiceImpl extends APIService<PayOSAsync> implements Invoi
     return this.client.downloadFileAsync(
         FinalRequestOptions.fromRequestOptions(
             HTTPMethod.GET,
-            "/v2/payment-requests/" + paymentLinkId + "/invoices/" + invoiceId + "/download",
+            "/v2/payment-requests/"
+                + segment("paymentLinkId", paymentLinkId)
+                + "/invoices/"
+                + segment("invoiceId", invoiceId)
+                + "/download",
             requestOptions));
   }
 
@@ -116,7 +127,11 @@ public class InvoicesServiceImpl extends APIService<PayOSAsync> implements Invoi
     return this.client.downloadFileAsync(
         FinalRequestOptions.fromRequestOptions(
             HTTPMethod.GET,
-            "/v2/payment-requests/" + orderCode + "/invoices/" + invoiceId + "/download",
+            "/v2/payment-requests/"
+                + segment("orderCode", orderCode)
+                + "/invoices/"
+                + segment("invoiceId", invoiceId)
+                + "/download",
             requestOptions));
   }
 

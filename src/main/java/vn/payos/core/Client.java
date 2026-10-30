@@ -245,6 +245,9 @@ public abstract class Client {
     if (resSignature == null || resSignature.isEmpty()) {
       throw new InvalidSignatureException("Data integrity check failed");
     }
+    if (sig.getResponse() == FinalRequestOptions.ResponseSigning.BODY) {
+      vn.payos.crypto.ResponseDataValidator.validate(data);
+    }
     String signed =
         (sig.getResponse() == FinalRequestOptions.ResponseSigning.BODY)
             ? crypto.createSignatureFromObj(data, options.getChecksumKey())

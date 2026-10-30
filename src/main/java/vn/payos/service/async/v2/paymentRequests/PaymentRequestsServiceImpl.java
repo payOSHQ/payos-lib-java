@@ -1,5 +1,7 @@
 package vn.payos.service.async.v2.paymentRequests;
 
+import static vn.payos.core.PathSegments.segment;
+
 import java.util.concurrent.CompletableFuture;
 import vn.payos.PayOSAsync;
 import vn.payos.core.APIService;
@@ -72,7 +74,9 @@ public class PaymentRequestsServiceImpl extends APIService<PayOSAsync>
     }
 
     return client.getAsync(
-        "/v2/payment-requests/" + paymentLinkId, PaymentLink.class, requestOptions);
+        "/v2/payment-requests/" + segment("paymentLinkId", paymentLinkId),
+        PaymentLink.class,
+        requestOptions);
   }
 
   @Override
@@ -97,7 +101,10 @@ public class PaymentRequestsServiceImpl extends APIService<PayOSAsync>
       requestOptions.setTimeout(options.getTimeout());
     }
 
-    return client.getAsync("/v2/payment-requests/" + orderCode, PaymentLink.class, requestOptions);
+    return client.getAsync(
+        "/v2/payment-requests/" + segment("orderCode", orderCode),
+        PaymentLink.class,
+        requestOptions);
   }
 
   @Override
@@ -134,7 +141,9 @@ public class PaymentRequestsServiceImpl extends APIService<PayOSAsync>
     requestOptions.setBody(requestData);
 
     return client.postAsync(
-        "/v2/payment-requests/" + paymentLinkId + "/cancel", PaymentLink.class, requestOptions);
+        "/v2/payment-requests/" + segment("paymentLinkId", paymentLinkId) + "/cancel",
+        PaymentLink.class,
+        requestOptions);
   }
 
   @Override
@@ -175,7 +184,9 @@ public class PaymentRequestsServiceImpl extends APIService<PayOSAsync>
     requestOptions.setBody(requestData);
 
     return client.postAsync(
-        "/v2/payment-requests/" + orderCode + "/cancel", PaymentLink.class, requestOptions);
+        "/v2/payment-requests/" + segment("orderCode", orderCode) + "/cancel",
+        PaymentLink.class,
+        requestOptions);
   }
 
   @Override
