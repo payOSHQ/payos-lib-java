@@ -4,7 +4,7 @@
 
 ### Bug Fixes
 
-- **webhooks:** stricter validation of raw webhook data before signature verification; constant-time comparison
+- **webhooks:** stricter validation of raw webhook data before signature verification; constant-time comparison ([GHSA-mc2r-v3x7-j5rv](https://github.com/payOSHQ/payos-lib-java/security/advisories/GHSA-mc2r-v3x7-j5rv))
 
 ## 2.0.1 (2025-10-10)
 
