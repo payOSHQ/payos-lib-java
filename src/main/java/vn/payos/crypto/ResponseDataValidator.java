@@ -17,8 +17,9 @@ import vn.payos.exception.InvalidSignatureException;
  */
 public final class ResponseDataValidator {
   private static final Pattern KEY_PATTERN = Pattern.compile("^[A-Za-z0-9_]+$");
-  // A "&key=" sequence inside a value is what lets the unencoded signed string be re-split.
-  private static final Pattern SMUGGLING_PATTERN = Pattern.compile("&[A-Za-z0-9_]+=");
+  // A "&key=" sequence inside a value would let the unencoded signed string be split into other
+  // fields.
+  private static final Pattern KEY_DELIMITER_PATTERN = Pattern.compile("&[A-Za-z0-9_]+=");
   private static final long MAX_SAFE_INTEGER = 9007199254740991L;
 
   private ResponseDataValidator() {}
@@ -79,7 +80,8 @@ public final class ResponseDataValidator {
       return;
     }
     if (value instanceof Integer || value instanceof Long || value instanceof Short) {
-      if (Math.abs(((Number) value).longValue()) > MAX_SAFE_INTEGER) {
+      long n = ((Number) value).longValue();
+      if (n > MAX_SAFE_INTEGER || n < -MAX_SAFE_INTEGER) {
         throw invalid("\"" + path + "\" must be a safe integer");
       }
     } else if (value instanceof BigInteger) {
@@ -94,7 +96,7 @@ public final class ResponseDataValidator {
         throw invalid("\"" + path + "\" must be a finite number within the safe integer range");
       }
     } else if (value instanceof String) {
-      if (SMUGGLING_PATTERN.matcher((String) value).find()) {
+      if (KEY_DELIMITER_PATTERN.matcher((String) value).find()) {
         throw invalid("\"" + path + "\" must not contain a \"&key=\" sequence");
       }
     } else {

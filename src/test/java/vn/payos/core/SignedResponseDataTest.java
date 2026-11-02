@@ -204,6 +204,18 @@ public class SignedResponseDataTest {
   }
 
   @Test
+  void longMinValueIsRejected() throws Exception {
+    assertRejected(
+        "{\"id\":\"abc\",\"amount\":-9223372036854775808}", "\"amount\" must be a safe integer");
+  }
+
+  @Test
+  void negativeUnsafeIntegerIsRejected() throws Exception {
+    assertRejected(
+        "{\"id\":\"abc\",\"amount\":-9007199254740992}", "\"amount\" must be a safe integer");
+  }
+
+  @Test
   void nonFiniteNumberIsRejected() throws Exception {
     assertRejected(
         "{\"id\":\"abc\",\"amount\":1e400}",

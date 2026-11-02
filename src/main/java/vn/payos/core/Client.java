@@ -174,6 +174,16 @@ public abstract class Client {
   }
 
   /**
+   * Should retry after a connection failure
+   *
+   * @param error failure raised by the HTTP call
+   * @return false when the failure is a redirect chain over the limit, true otherwise
+   */
+  protected boolean shouldRetry(IOException error) {
+    return !(error instanceof SafeRedirectInterceptor.TooManyRedirectsException);
+  }
+
+  /**
    * Build body
    *
    * @param <TReq> Request body type

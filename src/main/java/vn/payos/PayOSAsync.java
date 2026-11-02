@@ -295,7 +295,7 @@ public class PayOSAsync extends Client {
             new Callback() {
               @Override
               public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                if (retriesRemaining > 0) {
+                if (retriesRemaining > 0 && shouldRetry(e)) {
                   options
                       .getStreamHandlerExecutor()
                       .schedule(
@@ -414,7 +414,7 @@ public class PayOSAsync extends Client {
             new Callback() {
               @Override
               public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                if (retriesRemaining > 0) {
+                if (retriesRemaining > 0 && shouldRetry(e)) {
                   long delayMs = computeBackoffMs(maxRetries - retriesRemaining);
                   options
                       .getStreamHandlerExecutor()

@@ -7,13 +7,21 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import okhttp3.Cookie;
+import okhttp3.CookieJar;
+import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import vn.payos.PayOS;
+import vn.payos.PayOSAsync;
 import vn.payos.exception.APIException;
 import vn.payos.exception.ConnectionException;
 import vn.payos.exception.PayOSException;
@@ -49,6 +57,25 @@ public class RedirectHeaderHandlingTest {
             .maxRetries(0)
             .httpClient(httpClient)
             .build());
+  }
+
+  /** Options with the SDK's default retry settings. */
+  private static ClientOptions defaultRetryOptions(String baseUrl) {
+    return ClientOptions.builder()
+        .clientId("client-id")
+        .apiKey("api-key")
+        .checksumKey("checksum-key")
+        .baseURL(baseUrl)
+        .build();
+  }
+
+  private static Throwable callAsync(Supplier<CompletableFuture<?>> future) {
+    try {
+      future.get().join();
+      return null;
+    } catch (CompletionException e) {
+      return e.getCause();
+    }
   }
 
   /** Default client plus caller-supplied cookie/authorization headers on every request. */
@@ -251,14 +278,173 @@ public class RedirectHeaderHandlingTest {
     assertEquals(6, origin.requests().size());
   }
 
-  @Test
-  void moreThanFiveRedirectsFail() throws Exception {
-    redirectChain(6);
-    Throwable err = call(() -> client(origin.url(), null).paymentRequests().get("abc"));
+  private void assertTooManyRedirects(Throwable err) {
     assertInstanceOf(ConnectionException.class, err);
     assertTrue(
-        err.getMessage().contains("Too many redirects"), "unexpected message " + err.getMessage());
+        err.getMessage().contains("Too many redirects (more than 5)"),
+        "unexpected message " + err.getMessage());
     assertEquals(6, origin.requests().size());
+  }
+
+  @Test
+  void moreThanFiveRedirectsFailWithoutRetry() throws Exception {
+    redirectChain(6);
+    PayOS payOS = new PayOS(defaultRetryOptions(origin.url()));
+    assertTooManyRedirects(call(() -> payOS.paymentRequests().get("abc")));
+  }
+
+  @Test
+  void moreThanFiveRedirectsFailWithoutRetryOnDownload() throws Exception {
+    redirectChain(6);
+    PayOS payOS = new PayOS(defaultRetryOptions(origin.url()));
+    assertTooManyRedirects(call(() -> payOS.paymentRequests().invoices().download("inv1", "pl1")));
+  }
+
+  @Test
+  void moreThanFiveRedirectsFailWithoutRetryAsync() throws Exception {
+    redirectChain(6);
+    PayOSAsync payOS = new PayOSAsync(defaultRetryOptions(origin.url()));
+    assertTooManyRedirects(callAsync(() -> payOS.paymentRequests().get("abc")));
+  }
+
+  @Test
+  void moreThanFiveRedirectsFailWithoutRetryOnAsyncDownload() throws Exception {
+    redirectChain(6);
+    PayOSAsync payOS = new PayOSAsync(defaultRetryOptions(origin.url()));
+    assertTooManyRedirects(
+        callAsync(() -> payOS.paymentRequests().invoices().download("inv1", "pl1")));
+  }
+
+  @Test
+  void onlyRedirectStatusesAreFollowed() throws Exception {
+    for (int status : new int[] {300, 304, 305, 306, 399}) {
+      try (LocalHttpServer target = new LocalHttpServer(rec -> notFound());
+          LocalHttpServer source =
+              new LocalHttpServer(
+                  rec -> LocalHttpServer.Reply.redirect(status, target.url() + "/landing"))) {
+        Throwable err = call(() -> client(source.url(), null).paymentRequests().get("abc"));
+
+        assertInstanceOf(APIException.class, err, "status " + status);
+        assertEquals(1, source.requests().size(), "status " + status);
+        assertTrue(target.requests().isEmpty(), "status " + status + " must not be followed");
+      }
+    }
+  }
+
+  /** In-memory cookie jar seeded with a host-only cookie for 127.0.0.1 (any port). */
+  private static final class MemoryCookieJar implements CookieJar {
+    final List<Cookie> cookies = new ArrayList<>();
+
+    MemoryCookieJar(String seedUrl) {
+      HttpUrl url = HttpUrl.get(seedUrl);
+      cookies.add(Cookie.parse(url, "session=jar"));
+    }
+
+    @Override
+    public synchronized List<Cookie> loadForRequest(HttpUrl url) {
+      List<Cookie> matching = new ArrayList<>();
+      for (Cookie c : cookies) {
+        if (c.matches(url)) {
+          matching.add(c);
+        }
+      }
+      return matching;
+    }
+
+    @Override
+    public synchronized void saveFromResponse(HttpUrl url, List<Cookie> received) {
+      cookies.addAll(received);
+    }
+
+    synchronized boolean has(String name) {
+      return cookies.stream().anyMatch(c -> c.name().equals(name));
+    }
+  }
+
+  private static PayOS clientWithJar(String baseUrl, CookieJar jar) {
+    return client(baseUrl, new OkHttpClient.Builder().cookieJar(jar).build());
+  }
+
+  @Test
+  void cookieJarCookiesStayOnSameOriginRedirect() throws Exception {
+    origin =
+        new LocalHttpServer(
+            rec ->
+                rec.rawPath.equals("/landing")
+                    ? notFound()
+                    : LocalHttpServer.Reply.redirect(302, "/landing"));
+    MemoryCookieJar jar = new MemoryCookieJar(origin.url());
+    call(() -> clientWithJar(origin.url(), jar).paymentRequests().get("abc"));
+
+    List<LocalHttpServer.Recorded> hops = origin.requests();
+    assertEquals(2, hops.size());
+    assertEquals("session=jar", hops.get(0).header("cookie"));
+    assertEquals("session=jar", hops.get(1).header("cookie"));
+  }
+
+  @Test
+  void cookieJarCookiesAreNotSentAfterLeavingOrigin() throws Exception {
+    other =
+        new LocalHttpServer(
+            rec -> LocalHttpServer.Reply.json(404, NOT_FOUND).header("Set-Cookie", "other=b"));
+    origin =
+        new LocalHttpServer(rec -> LocalHttpServer.Reply.redirect(302, other.url() + "/landing"));
+    MemoryCookieJar jar = new MemoryCookieJar(origin.url());
+    call(() -> clientWithJar(origin.url(), jar).paymentRequests().get("abc"));
+
+    assertEquals("session=jar", origin.requests().get(0).header("cookie"));
+    assertEquals(1, other.requests().size());
+    assertCredentialsAbsent(other.requests().get(0));
+    assertTrue(jar.has("other"), "cookies set after leaving the origin are still saved");
+  }
+
+  private void originToOtherAndBack() throws Exception {
+    AtomicReference<LocalHttpServer> back = new AtomicReference<>();
+    other =
+        new LocalHttpServer(
+            rec -> LocalHttpServer.Reply.redirect(302, back.get().url() + "/landing"));
+    origin =
+        new LocalHttpServer(
+            rec ->
+                rec.rawPath.equals("/landing")
+                    ? notFound()
+                    : LocalHttpServer.Reply.redirect(302, other.url() + "/hop"));
+    back.set(origin);
+  }
+
+  private void assertNoJarCookieAfterReturning() {
+    List<LocalHttpServer.Recorded> hops = origin.requests();
+    assertEquals(2, hops.size());
+    assertEquals("session=jar", hops.get(0).header("cookie"));
+    assertCredentialsAbsent(other.requests().get(0));
+    assertEquals("/landing", hops.get(1).rawPath);
+    assertCredentialsAbsent(hops.get(1));
+  }
+
+  @Test
+  void cookieJarCookiesStayOffAfterReturningToOrigin() throws Exception {
+    originToOtherAndBack();
+    MemoryCookieJar jar = new MemoryCookieJar(origin.url());
+    call(() -> clientWithJar(origin.url(), jar).paymentRequests().get("abc"));
+    assertNoJarCookieAfterReturning();
+  }
+
+  @Test
+  void cookieJarCookiesStayOffAfterReturningToOriginAsync() throws Exception {
+    originToOtherAndBack();
+    MemoryCookieJar jar = new MemoryCookieJar(origin.url());
+    PayOSAsync payOS =
+        new PayOSAsync(
+            ClientOptions.builder()
+                .clientId("client-id")
+                .apiKey("api-key")
+                .checksumKey("checksum-key")
+                .baseURL(origin.url())
+                .maxRetries(0)
+                .httpClient(new OkHttpClient.Builder().cookieJar(jar).build())
+                .build());
+    callAsync(() -> payOS.paymentRequests().get("abc"));
+    assertNoJarCookieAfterReturning();
   }
 
   @Test
