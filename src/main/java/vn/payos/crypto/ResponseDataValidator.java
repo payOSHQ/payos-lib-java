@@ -1,7 +1,5 @@
 package vn.payos.crypto;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +20,6 @@ public final class ResponseDataValidator {
   // A "&key=" sequence inside a value is what lets the unencoded signed string be re-split.
   private static final Pattern SMUGGLING_PATTERN = Pattern.compile("&[A-Za-z0-9_]+=");
   private static final long MAX_SAFE_INTEGER = 9007199254740991L;
-  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private ResponseDataValidator() {}
 
@@ -30,22 +27,20 @@ public final class ResponseDataValidator {
     return new InvalidSignatureException("Invalid response data: " + reason);
   }
 
+  /**
+   * Validate body-signed response data as parsed by Jackson (maps, lists and scalars).
+   *
+   * @param data the {@code data} field of the API response
+   * @throws InvalidSignatureException when the data does not have the expected shape
+   */
   public static void validate(Object data) {
-    Map<String, Object> map;
-    try {
-      map =
-          data == null
-              ? null
-              : MAPPER.convertValue(data, new TypeReference<Map<String, Object>>() {});
-    } catch (IllegalArgumentException e) {
-      map = null;
-    }
-    if (map == null) {
+    if (!(data instanceof Map)) {
       throw invalid("data must be a JSON object");
     }
+    Map<?, ?> map = (Map<?, ?>) data;
     validateKeys("", map);
-    for (Map.Entry<String, Object> entry : map.entrySet()) {
-      String key = entry.getKey();
+    for (Map.Entry<?, ?> entry : map.entrySet()) {
+      String key = String.valueOf(entry.getKey());
       Object value = entry.getValue();
       if (!(value instanceof List)) {
         validateScalar(key, value);

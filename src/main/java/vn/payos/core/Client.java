@@ -74,7 +74,7 @@ public abstract class Client {
    */
   public Client(@NonNull ClientOptions options) {
     this.options = options;
-    this.httpClient = options.getHttpClient();
+    this.httpClient = SafeRedirectInterceptor.install(options.getHttpClient());
     this.crypto = new CryptoProviderImpl();
   }
 
@@ -129,7 +129,8 @@ public abstract class Client {
         String[] segments = normalizePath.split("/");
         for (String segment : segments) {
           if (!segment.isEmpty()) {
-            builder.addPathSegment(segment);
+            // Interpolated identifiers are already percent-encoded by PathSegments.
+            builder.addEncodedPathSegment(segment);
           }
         }
       }

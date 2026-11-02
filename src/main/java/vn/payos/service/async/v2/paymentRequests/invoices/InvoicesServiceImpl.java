@@ -40,7 +40,7 @@ public class InvoicesServiceImpl extends APIService<PayOSAsync> implements Invoi
     }
 
     return client.getAsync(
-        "/v2/payment-requests/" + segment("paymentLinkId", paymentLinkId),
+        "/v2/payment-requests/" + segment("paymentLinkId", paymentLinkId) + "/invoices",
         InvoicesInfo.class,
         requestOptions);
   }
@@ -63,7 +63,7 @@ public class InvoicesServiceImpl extends APIService<PayOSAsync> implements Invoi
     }
 
     return client.getAsync(
-        "/v2/payment-requests/" + segment("orderCode", orderCode),
+        "/v2/payment-requests/" + segment("orderCode", orderCode) + "/invoices",
         InvoicesInfo.class,
         requestOptions);
   }

@@ -62,8 +62,7 @@ public class ClientOptions {
         new OkHttpClient.Builder()
             .connectTimeout(timeoutMs, TimeUnit.MILLISECONDS)
             .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
-            .writeTimeout(timeoutMs, TimeUnit.MILLISECONDS)
-            .addNetworkInterceptor(new SafeRedirectInterceptor());
+            .writeTimeout(timeoutMs, TimeUnit.MILLISECONDS);
 
     if (logLevel != LogLevel.NONE) {
       HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();

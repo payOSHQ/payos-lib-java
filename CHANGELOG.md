@@ -5,6 +5,7 @@
 ### Bug Fixes
 
 - **webhooks:** stricter validation of raw webhook data before signature verification; constant-time comparison ([GHSA-mc2r-v3x7-j5rv](https://github.com/payOSHQ/payos-lib-java/security/advisories/GHSA-mc2r-v3x7-j5rv))
+- **client:** encode identifiers interpolated into API paths (no double encoding) and reject dot segments, empty values and negative/unsafe integers; follow redirects manually (at most 5) and drop `x-api-key`/`x-client-id`/`authorization`/`cookie`/`proxy-authorization` headers when a redirect leaves the API origin, including for user-supplied `OkHttpClient`s; validate body-signed response data before signature verification; async `invoices().get(...)` now calls `/v2/payment-requests/{id}/invoices`
 
 ## 2.0.1 (2025-10-10)
 
