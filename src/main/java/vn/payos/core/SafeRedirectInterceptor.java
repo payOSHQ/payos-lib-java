@@ -21,33 +21,33 @@ final class SafeRedirectInterceptor implements Interceptor {
   static final int MAX_REDIRECTS = 5;
 
   private static final String[] SENSITIVE = {
-    "x-api-key", "x-client-id", "authorization", "cookie", "proxy-authorization"
+    "x-api-key", "x-client-id", "x-partner-code", "authorization", "cookie", "proxy-authorization"
   };
 
+  private final boolean followSslRedirects;
+
+  private SafeRedirectInterceptor(boolean followSslRedirects) {
+    this.followSslRedirects = followSslRedirects;
+  }
+
   /**
-   * Return a client that follows redirects through this interceptor. Applied to both the default
-   * and user-supplied clients.
+   * Return a client that follows redirects through this interceptor. A client configured with
+   * {@code followRedirects(false)} is returned unchanged, so its redirects are never followed; its
+   * {@code followSslRedirects} setting is kept.
    *
    * @param client the configured client
    * @return a client sharing the same pools with redirect handling replaced
    */
   static OkHttpClient install(OkHttpClient client) {
-    boolean installed = false;
-    for (Interceptor interceptor : client.interceptors()) {
-      if (interceptor instanceof SafeRedirectInterceptor) {
-        installed = true;
-        break;
-      }
-    }
-    if (installed && !client.followRedirects() && !client.followSslRedirects()) {
+    if (!client.followRedirects()) {
       return client;
     }
-    OkHttpClient.Builder builder =
-        client.newBuilder().followRedirects(false).followSslRedirects(false);
-    if (!installed) {
-      builder.addInterceptor(new SafeRedirectInterceptor());
-    }
-    return builder.build();
+    return client
+        .newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .addInterceptor(new SafeRedirectInterceptor(client.followSslRedirects()))
+        .build();
   }
 
   @Override
@@ -58,7 +58,7 @@ final class SafeRedirectInterceptor implements Interceptor {
       int status = response.code();
       String location = status >= 300 && status < 400 ? response.header("Location") : null;
       HttpUrl next = location != null ? request.url().resolve(location) : null;
-      if (next == null) {
+      if (next == null || (!followSslRedirects && !next.scheme().equals(request.url().scheme()))) {
         return response;
       }
       response.close();
