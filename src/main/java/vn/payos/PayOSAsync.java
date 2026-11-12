@@ -22,8 +22,8 @@ import vn.payos.service.async.v1.payoutsAccount.PayoutsAccountService;
 import vn.payos.service.async.v1.payoutsAccount.PayoutsAccountServiceImpl;
 import vn.payos.service.async.v2.paymentRequests.PaymentRequestsService;
 import vn.payos.service.async.v2.paymentRequests.PaymentRequestsServiceImpl;
-import vn.payos.service.async.webhook.WebhooksService;
-import vn.payos.service.async.webhook.WebhooksServiceImpl;
+import vn.payos.service.async.webhooks.WebhooksService;
+import vn.payos.service.async.webhooks.WebhooksServiceImpl;
 
 /** payOS async client */
 public class PayOSAsync extends Client {
@@ -295,7 +295,7 @@ public class PayOSAsync extends Client {
             new Callback() {
               @Override
               public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                if (retriesRemaining > 0) {
+                if (retriesRemaining > 0 && shouldRetry(e)) {
                   options
                       .getStreamHandlerExecutor()
                       .schedule(
@@ -414,7 +414,7 @@ public class PayOSAsync extends Client {
             new Callback() {
               @Override
               public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                if (retriesRemaining > 0) {
+                if (retriesRemaining > 0 && shouldRetry(e)) {
                   long delayMs = computeBackoffMs(maxRetries - retriesRemaining);
                   options
                       .getStreamHandlerExecutor()

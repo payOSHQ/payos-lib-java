@@ -1,5 +1,9 @@
-package vn.payos.service.async.webhook;
+package vn.payos.service.async.webhooks;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import vn.payos.PayOSAsync;
 import vn.payos.core.APIService;
@@ -10,6 +14,7 @@ import vn.payos.model.webhooks.ConfirmWebhookResponse;
 import vn.payos.model.webhooks.Webhook;
 import vn.payos.model.webhooks.WebhookData;
 import vn.payos.util.DataConverterUtils;
+import vn.payos.util.WebhookVerification;
 
 /** WebhooksServiceImpl */
 public class WebhooksServiceImpl extends APIService<PayOSAsync> implements WebhooksService {
@@ -63,34 +68,46 @@ public class WebhooksServiceImpl extends APIService<PayOSAsync> implements Webho
 
   @Override
   public CompletableFuture<WebhookData> verify(Object webhook) {
-    Webhook normalizeWebhook = this.normalize(webhook);
-    WebhookData webhookData = normalizeWebhook.getData();
-    String signature = normalizeWebhook.getSignature();
-    if (signature.isEmpty()) {
-      CompletableFuture<WebhookData> failed = new CompletableFuture<>();
-      failed.completeExceptionally(new WebhookException("Invalid signature"));
-      return failed;
-    }
-
     return CompletableFuture.supplyAsync(
         () -> {
-          String signedSignature =
-              this.client
-                  .getCrypto()
-                  .createSignatureFromObj(webhookData, this.client.getOptions().getChecksumKey());
+          String checksumKey = this.client.getOptions().getChecksumKey();
+          if (webhook instanceof Webhook) {
+            Webhook typedWebhook = (Webhook) webhook;
+            WebhookData webhookData = typedWebhook.getData();
+            String signature = typedWebhook.getSignature();
+            if (signature == null || signature.isEmpty()) {
+              throw new WebhookException("Invalid signature");
+            }
+            WebhookVerification.validateTyped(webhookData);
+            String signedSignature =
+                this.client.getCrypto().createSignatureFromObj(webhookData, checksumKey);
+            if (signedSignature.isEmpty()
+                || !WebhookVerification.constantTimeEquals(signedSignature, signature)) {
+              throw new WebhookException("Data not integrity");
+            }
+            return webhookData;
+          }
 
-          if (signedSignature.isEmpty() || !signedSignature.equals(signature)) {
+          JsonNode root = WebhookVerification.toTree(webhook);
+          if (root == null || !root.isObject()) {
+            throw new WebhookException("Invalid webhook data");
+          }
+          JsonNode data = root.get("data");
+          if (data == null || data.isNull()) {
+            throw new WebhookException("Invalid webhook data");
+          }
+          WebhookVerification.validateData(data);
+          JsonNode sig = root.get("signature");
+          if (sig == null || !sig.isTextual() || sig.asText().isEmpty()) {
+            throw new WebhookException("Invalid signature");
+          }
+          Map<String, Object> wire =
+              new ObjectMapper().convertValue(data, new TypeReference<Map<String, Object>>() {});
+          String signed = this.client.getCrypto().createSignatureFromObj(wire, checksumKey);
+          if (signed.isEmpty() || !WebhookVerification.constantTimeEquals(signed, sig.asText())) {
             throw new WebhookException("Data not integrity");
           }
-          return webhookData;
+          return DataConverterUtils.normalize(data, WebhookData.class);
         });
-  }
-
-  private Webhook normalize(Object webhookObj) {
-    try {
-      return DataConverterUtils.normalize(webhookObj, Webhook.class);
-    } catch (IllegalArgumentException e) {
-      throw new WebhookException(e.getMessage(), e);
-    }
   }
 }

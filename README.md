@@ -81,6 +81,8 @@ Then using `.webhooks().verify()` to verify an receive webhook data.
 WebhookData data = client.webhooks().verify(body);
 ```
 
+For the strictest checks, pass the raw request body `String` to `verify()` instead of a pre-parsed object.
+
 For more information about webhooks, see [the API doc](https://payos.vn/docs/api/#tag/payment-webhook/operation/payment-webhook).
 
 ### Handling errors

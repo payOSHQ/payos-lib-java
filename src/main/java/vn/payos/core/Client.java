@@ -18,6 +18,7 @@ import vn.payos.exception.APIException;
 import vn.payos.exception.InvalidSignatureException;
 import vn.payos.exception.PayOSException;
 import vn.payos.util.PropertiesUtils;
+import vn.payos.util.WebhookVerification;
 
 /**
  * Base client class that provides common functionality for both synchronous and asynchronous payOS
@@ -73,7 +74,7 @@ public abstract class Client {
    */
   public Client(@NonNull ClientOptions options) {
     this.options = options;
-    this.httpClient = options.getHttpClient();
+    this.httpClient = SafeRedirectInterceptor.install(options.getHttpClient());
     this.crypto = new CryptoProviderImpl();
   }
 
@@ -128,7 +129,8 @@ public abstract class Client {
         String[] segments = normalizePath.split("/");
         for (String segment : segments) {
           if (!segment.isEmpty()) {
-            builder.addPathSegment(segment);
+            // Interpolated identifiers are already percent-encoded by PathSegments.
+            builder.addEncodedPathSegment(segment);
           }
         }
       }
@@ -169,6 +171,16 @@ public abstract class Client {
   protected boolean shouldRetry(int status) {
     if (status == 408 || status == 429) return true;
     return status >= 500;
+  }
+
+  /**
+   * Should retry after a connection failure
+   *
+   * @param error failure raised by the HTTP call
+   * @return false when the failure is a redirect chain over the limit, true otherwise
+   */
+  protected boolean shouldRetry(IOException error) {
+    return !(error instanceof SafeRedirectInterceptor.TooManyRedirectsException);
   }
 
   /**
@@ -244,11 +256,14 @@ public abstract class Client {
     if (resSignature == null || resSignature.isEmpty()) {
       throw new InvalidSignatureException("Data integrity check failed");
     }
+    if (sig.getResponse() == FinalRequestOptions.ResponseSigning.BODY) {
+      vn.payos.crypto.ResponseDataValidator.validate(data);
+    }
     String signed =
         (sig.getResponse() == FinalRequestOptions.ResponseSigning.BODY)
             ? crypto.createSignatureFromObj(data, options.getChecksumKey())
             : crypto.createSignature(options.getChecksumKey(), data);
-    if (!resSignature.equals(signed)) {
+    if (!WebhookVerification.constantTimeEquals(resSignature, signed)) {
       throw new InvalidSignatureException("Data integrity check failed");
     }
   }

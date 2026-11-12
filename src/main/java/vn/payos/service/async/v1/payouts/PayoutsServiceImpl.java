@@ -1,5 +1,7 @@
 package vn.payos.service.async.v1.payouts;
 
+import static vn.payos.core.PathSegments.segment;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -84,7 +86,8 @@ public class PayoutsServiceImpl extends APIService<PayOSAsync> implements Payout
       requestOptions.setMaxRetries(options.getMaxRetries());
       requestOptions.setTimeout(options.getTimeout());
     }
-    return this.client.getAsync("/v1/payouts/" + payoutId, Payout.class, requestOptions);
+    return this.client.getAsync(
+        "/v1/payouts/" + segment("payoutId", payoutId), Payout.class, requestOptions);
   }
 
   @Override

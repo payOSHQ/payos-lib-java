@@ -294,7 +294,7 @@ public class PayOS extends Client {
 
         return processResponse(text, status, res, reqOpts, dataClass);
       } catch (IOException e) {
-        if (retriesRemaining > 0) {
+        if (retriesRemaining > 0 && shouldRetry(e)) {
           retriesRemaining -= 1;
           sleep(computeBackoffMs(maxRetries - retriesRemaining));
           continue;
@@ -355,7 +355,7 @@ public class PayOS extends Client {
 
         return processFileDownloadResponse(res);
       } catch (IOException e) {
-        if (retriesRemaining > 0) {
+        if (retriesRemaining > 0 && shouldRetry(e)) {
           retriesRemaining -= 1;
           sleep(computeBackoffMs(maxRetries - retriesRemaining));
           continue;
